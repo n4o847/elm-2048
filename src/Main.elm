@@ -1,8 +1,9 @@
+module Main exposing (Board, Cell(..), Model, Msg(..), Position, Row, init, main, setBoard, update, view, viewBoard, viewCell, viewRow)
+
+import Array exposing (Array)
 import Browser
 import Html exposing (..)
 import Html.Events exposing (..)
-
-import Array exposing (Array)
 
 
 main : Program () Model Msg
@@ -22,15 +23,19 @@ type alias Model =
     { board : Board
     }
 
+
 type alias Board =
     Array Row
+
 
 type alias Row =
     Array Cell
 
+
 type Cell
     = Tile Int
     | Empty
+
 
 type alias Position =
     ( Int, Int )
@@ -55,13 +60,13 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         Change ->
-            { model |
-                board = setBoard (1, 1) (Tile 4) model.board
+            { model
+                | board = setBoard ( 1, 1 ) (Tile 4) model.board
             }
 
 
 setBoard : Position -> Cell -> Board -> Board
-setBoard (i, j) cell board =
+setBoard ( i, j ) cell board =
     Array.get i board
         |> Maybe.map (\oldRow -> Array.set j cell oldRow)
         |> Maybe.map (\newRow -> Array.set i newRow board)
@@ -83,14 +88,14 @@ view model =
 
 viewBoard : Board -> Html Msg
 viewBoard board =
-    div []
-        <| Array.toList (Array.map viewRow board)
+    div [] <|
+        Array.toList (Array.map viewRow board)
 
 
 viewRow : Row -> Html Msg
 viewRow row =
-    div []
-        <| Array.toList (Array.map viewCell row)
+    div [] <|
+        Array.toList (Array.map viewCell row)
 
 
 viewCell : Cell -> Html Msg
@@ -98,8 +103,8 @@ viewCell cell =
     case cell of
         Tile number ->
             span []
-            [ text (String.fromInt number)
-            ]
+                [ text (String.fromInt number)
+                ]
 
         Empty ->
             span [] []
