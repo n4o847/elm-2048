@@ -8,10 +8,11 @@ import Html.Events exposing (..)
 
 main : Program () Model Msg
 main =
-    Browser.sandbox
+    Browser.element
         { init = init
         , view = view
         , update = update
+        , subscriptions = subscriptions
         }
 
 
@@ -41,11 +42,13 @@ type alias Position =
     ( Int, Int )
 
 
-init : Model
-init =
-    { board =
-        Array.repeat 4 <| Array.repeat 4 <| Tile 2
-    }
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( { board =
+            Array.repeat 4 <| Array.repeat 4 <| Tile 2
+      }
+    , Cmd.none
+    )
 
 
 
@@ -56,13 +59,15 @@ type Msg
     = Change
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Change ->
-            { model
+            ( { model
                 | board = setBoard ( 1, 1 ) (Tile 4) model.board
-            }
+              }
+            , Cmd.none
+            )
 
 
 setBoard : Position -> Cell -> Board -> Board
@@ -108,3 +113,12 @@ viewCell cell =
 
         Empty ->
             span [] []
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
