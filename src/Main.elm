@@ -32,6 +32,9 @@ type Cell
     = Tile Int
     | Empty
 
+type alias Position =
+    ( Int, Int )
+
 
 init : Model
 init =
@@ -45,18 +48,24 @@ init =
 
 
 type Msg
-    = Increment
-    | Decrement
+    = Change
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Increment ->
-            model
+        Change ->
+            { model |
+                board = setBoard (1, 1) (Tile 4) model.board
+            }
 
-        Decrement ->
-            model
+
+setBoard : Position -> Cell -> Board -> Board
+setBoard (i, j) cell board =
+    Array.get i board
+        |> Maybe.map (\oldRow -> Array.set j cell oldRow)
+        |> Maybe.map (\newRow -> Array.set i newRow board)
+        |> Maybe.withDefault board
 
 
 
@@ -68,6 +77,7 @@ view model =
     div []
         [ h1 [] [ text "Hello" ]
         , viewBoard model.board
+        , button [ onClick Change ] [ text "Change" ]
         ]
 
 
