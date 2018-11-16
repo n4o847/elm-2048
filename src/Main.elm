@@ -1,9 +1,11 @@
-module Main exposing (Board, Cell(..), Model, Msg(..), Position, Row, init, main, setBoard, update, view, viewBoard, viewCell, viewRow)
+module Main exposing (main)
 
 import Array exposing (Array)
 import Browser
+import Browser.Events exposing (onKeyDown)
 import Html exposing (..)
-import Html.Events exposing (..)
+import Html.Events exposing (onClick)
+import Json.Decode as Decode
 
 
 main : Program () Model Msg
@@ -42,6 +44,14 @@ type alias Position =
     ( Int, Int )
 
 
+type Direction
+    = Left
+    | Right
+    | Up
+    | Down
+    | Other
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { board =
@@ -56,15 +66,33 @@ init _ =
 
 
 type Msg
-    = Change
+    = Change Direction
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Change ->
+        Change direction ->
+            let
+                position =
+                    case direction of
+                        Left ->
+                            ( 1, 0 )
+
+                        Right ->
+                            ( 1, 2 )
+
+                        Up ->
+                            ( 0, 1 )
+
+                        Down ->
+                            ( 2, 1 )
+
+                        Other ->
+                            ( 1, 1 )
+            in
             ( { model
-                | board = setBoard ( 1, 1 ) (Tile 4) model.board
+                | board = setBoard position (Tile 4) model.board
               }
             , Cmd.none
             )
@@ -87,7 +115,6 @@ view model =
     div []
         [ h1 [] [ text "Hello" ]
         , viewBoard model.board
-        , button [ onClick Change ] [ text "Change" ]
         ]
 
 
@@ -121,4 +148,30 @@ viewCell cell =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+        [ onKeyDown (Decode.map Change keyDecoder)
+        ]
+
+
+keyDecoder : Decode.Decoder Direction
+keyDecoder =
+    Decode.map toDirection (Decode.field "key" Decode.string)
+
+
+toDirection : String -> Direction
+toDirection string =
+    case string of
+        "ArrowLeft" ->
+            Left
+
+        "ArrowRight" ->
+            Right
+
+        "ArrowUp" ->
+            Up
+
+        "ArrowDown" ->
+            Down
+
+        _ ->
+            Other
