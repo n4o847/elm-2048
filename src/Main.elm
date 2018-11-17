@@ -56,10 +56,14 @@ type Direction
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { board =
-            Array.repeat 4 <| Array.repeat 4 <| Tile 2
+    let
+        emptyBoard =
+            Array.repeat 4 <| Array.repeat 4 <| Empty
+    in
+    ( { board = emptyBoard
       }
-    , Cmd.none
+    , randomPositionedTiles 2 emptyBoard
+        |> Random.generate PutMany
     )
 
 
@@ -70,6 +74,7 @@ init _ =
 type Msg
     = Slide Direction
     | Put ( Position, Cell )
+    | PutMany (List ( Position, Cell ))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,6 +104,13 @@ update msg model =
         Put ( position, cell ) ->
             ( { model
                 | board = setBoard position cell model.board
+              }
+            , Cmd.none
+            )
+
+        PutMany list ->
+            ( { model
+                | board = List.foldl (\( position, cell ) -> setBoard position cell) model.board list
               }
             , Cmd.none
             )
@@ -254,6 +266,44 @@ randomPosition board =
 randomTile : Random.Generator Cell
 randomTile =
     Random.uniform (Tile 2) [ Tile 4 ]
+
+
+randomPositionedTiles : Int -> Board -> Random.Generator (List ( Position, Cell ))
+randomPositionedTiles n board =
+    let
+        positionList =
+            sample n (emptyPositionList board)
+
+        tileList =
+            Random.list n randomTile
+    in
+    Random.map2 (List.map2 Tuple.pair) positionList tileList
+
+
+sample : Int -> List a -> Random.Generator (List a)
+sample n list =
+    if n <= 0 then
+        Random.constant []
+
+    else
+        let
+            indexedList =
+                List.indexedMap Tuple.pair list
+        in
+        case indexedList of
+            [] ->
+                Random.constant []
+
+            head :: tail ->
+                Random.uniform head tail
+                    |> Random.andThen
+                        (\( index, element ) ->
+                            let
+                                omitted =
+                                    List.take index list ++ List.drop (index + 1) list
+                            in
+                            Random.map ((::) element) (sample (n - 1) omitted)
+                        )
 
 
 
