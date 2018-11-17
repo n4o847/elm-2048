@@ -7,6 +7,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import Random
 
 
 main : Program () Model Msg
@@ -67,33 +68,37 @@ init _ =
 
 
 type Msg
-    = Change Direction
+    = Slide Direction
+    | Put ( Position, Cell )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Change direction ->
+        Slide direction ->
             let
-                position =
-                    case direction of
-                        Left ->
-                            ( 1, 0 )
+                slidedBoard =
+                    slideBoard direction model.board
 
-                        Right ->
-                            ( 1, 2 )
+                cmd =
+                    if model.board == slidedBoard then
+                        Cmd.none
 
-                        Up ->
-                            ( 0, 1 )
-
-                        Down ->
-                            ( 2, 1 )
-
-                        Other ->
-                            ( 1, 1 )
+                    else
+                        randomPosition slidedBoard
+                            |> Maybe.map (\position -> Random.pair position randomTile)
+                            |> Maybe.map (Random.generate Put)
+                            |> Maybe.withDefault Cmd.none
             in
             ( { model
-                | board = (toListBoard >> slideBoard direction >> fromListBoard) model.board
+                | board = slidedBoard
+              }
+            , cmd
+            )
+
+        Put ( position, cell ) ->
+            ( { model
+                | board = setBoard position cell model.board
               }
             , Cmd.none
             )
@@ -177,13 +182,21 @@ transpose matrix =
     List.foldr (List.map2 (::)) (List.repeat (List.length matrix) []) matrix
 
 
-slideBoard : Direction -> List (List Cell) -> List (List Cell)
+slideBoard : Direction -> Board -> Board
 slideBoard direction board =
+    board
+        |> toListBoard
+        |> slideListBoard direction
+        |> fromListBoard
+
+
+slideListBoard : Direction -> List (List Cell) -> List (List Cell)
+slideListBoard direction board =
     case direction of
         Left ->
             board
                 |> List.map List.reverse
-                |> slideBoard Right
+                |> slideListBoard Right
                 |> List.map List.reverse
 
         Right ->
@@ -193,17 +206,54 @@ slideBoard direction board =
         Up ->
             board
                 |> transpose
-                |> slideBoard Left
+                |> slideListBoard Left
                 |> transpose
 
         Down ->
             board
                 |> transpose
-                |> slideBoard Right
+                |> slideListBoard Right
                 |> transpose
 
         Other ->
             board
+
+
+emptyPositionList : Board -> List Position
+emptyPositionList board =
+    board
+        |> Array.map Array.toList
+        |> Array.toList
+        |> List.indexedMap (\i -> List.indexedMap (\j -> Tuple.pair ( i, j )))
+        |> List.concat
+        |> List.filterMap
+            (\( position, cell ) ->
+                case cell of
+                    Tile n ->
+                        Nothing
+
+                    Empty ->
+                        Just position
+            )
+
+
+randomPosition : Board -> Maybe (Random.Generator Position)
+randomPosition board =
+    let
+        positionList =
+            emptyPositionList board
+    in
+    case positionList of
+        [] ->
+            Nothing
+
+        head :: tail ->
+            Just (Random.uniform head tail)
+
+
+randomTile : Random.Generator Cell
+randomTile =
+    Random.uniform (Tile 2) [ Tile 4 ]
 
 
 
@@ -255,7 +305,7 @@ viewCell cell =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ onKeyDown (Decode.map Change keyDecoder)
+        [ onKeyDown (Decode.map Slide keyDecoder)
         ]
 
 
