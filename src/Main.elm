@@ -26,6 +26,7 @@ main =
 
 type alias Model =
     { board : Board
+    , score : Int
     }
 
 
@@ -61,6 +62,7 @@ init _ =
             Array.repeat 4 <| Array.repeat 4 <| Empty
     in
     ( { board = emptyBoard
+      , score = 0
       }
     , randomPositionedTiles 2 emptyBoard
         |> Random.generate PutMany
@@ -82,7 +84,7 @@ update msg model =
     case msg of
         Slide direction ->
             let
-                slidedBoard =
+                ( slidedBoard, increase ) =
                     slideBoard direction model.board
 
                 cmd =
@@ -97,6 +99,7 @@ update msg model =
             in
             ( { model
                 | board = slidedBoard
+                , score = model.score + increase
               }
             , cmd
             )
@@ -124,24 +127,24 @@ setBoard ( i, j ) cell board =
         |> Maybe.withDefault board
 
 
-mergeCell : Cell -> Cell -> Cell
+mergeCell : Cell -> Cell -> ( Cell, Int )
 mergeCell cellX cellY =
     case cellX of
         Tile x ->
             case cellY of
                 Tile y ->
-                    Tile (x + y)
+                    ( Tile (x + y), x + y )
 
                 Empty ->
-                    Empty
+                    ( Empty, 0 )
 
         Empty ->
-            Empty
+            ( Empty, 0 )
 
 
 type Accumulator
-    = Waiting Cell (List Cell)
-    | Done (List Cell)
+    = Waiting Cell (List Cell) Int
+    | Done (List Cell) Int
 
 
 accumulate : Cell -> Accumulator -> Accumulator
@@ -151,32 +154,38 @@ accumulate cell acc =
 
     else
         case acc of
-            Waiting waiting done ->
+            Waiting waiting done score ->
                 if waiting == cell then
-                    Done (mergeCell cell waiting :: done)
+                    let
+                        ( merged, increase ) =
+                            mergeCell cell waiting
+                    in
+                    Done (merged :: done) (score + increase)
 
                 else
-                    Waiting cell (waiting :: done)
+                    Waiting cell (waiting :: done) score
 
-            Done done ->
-                Waiting cell done
+            Done done score ->
+                Waiting cell done score
 
 
-slideRow : List Cell -> List Cell
+slideRow : List Cell -> ( List Cell, Int )
 slideRow row =
     let
         acc =
-            List.foldr accumulate (Done []) row
+            List.foldr accumulate (Done [] 0) row
 
-        newRow =
+        ( newRow, score ) =
             case acc of
-                Waiting waiting done ->
-                    waiting :: done
+                Waiting waiting done s ->
+                    ( waiting :: done, s )
 
-                Done done ->
-                    done
+                Done done s ->
+                    ( done, s )
     in
-    List.repeat (List.length row - List.length newRow) Empty ++ newRow
+    ( List.repeat (List.length row - List.length newRow) Empty ++ newRow
+    , score
+    )
 
 
 toListBoard : Board -> List (List Cell)
@@ -194,41 +203,43 @@ transpose matrix =
     List.foldr (List.map2 (::)) (List.repeat (List.length matrix) []) matrix
 
 
-slideBoard : Direction -> Board -> Board
+slideBoard : Direction -> Board -> ( Board, Int )
 slideBoard direction board =
     board
         |> toListBoard
         |> slideListBoard direction
-        |> fromListBoard
+        |> Tuple.mapFirst fromListBoard
 
 
-slideListBoard : Direction -> List (List Cell) -> List (List Cell)
+slideListBoard : Direction -> List (List Cell) -> ( List (List Cell), Int )
 slideListBoard direction board =
     case direction of
         Left ->
             board
                 |> List.map List.reverse
                 |> slideListBoard Right
-                |> List.map List.reverse
+                |> Tuple.mapFirst (List.map List.reverse)
 
         Right ->
             board
                 |> List.map slideRow
+                |> List.unzip
+                |> Tuple.mapSecond List.sum
 
         Up ->
             board
                 |> transpose
                 |> slideListBoard Left
-                |> transpose
+                |> Tuple.mapFirst transpose
 
         Down ->
             board
                 |> transpose
                 |> slideListBoard Right
-                |> transpose
+                |> Tuple.mapFirst transpose
 
         Other ->
-            board
+            ( board, 0 )
 
 
 emptyPositionList : Board -> List Position
@@ -314,6 +325,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ h1 [] [ text "Hello" ]
+        , div [] [ text <| "Score: " ++ String.fromInt model.score ]
         , viewBoard model.board
         ]
 
