@@ -27,6 +27,8 @@ main =
 type alias Model =
     { board : Board
     , score : Int
+    , over : Bool
+    , won : Bool
     }
 
 
@@ -63,6 +65,8 @@ init _ =
     in
     ( { board = emptyBoard
       , score = 0
+      , over = False
+      , won = False
       }
     , randomPositionedTiles 2 emptyBoard
         |> Random.generate PutMany
@@ -105,8 +109,14 @@ update msg model =
             )
 
         Put ( position, cell ) ->
+            let
+                newBoard =
+                    setBoard position cell model.board
+            in
             ( { model
-                | board = setBoard position cell model.board
+                | board = newBoard
+                , over = model.over || stuck newBoard
+                , won = model.won || won newBoard
               }
             , Cmd.none
             )
@@ -317,6 +327,22 @@ sample n list =
                         )
 
 
+stuck : Board -> Bool
+stuck board =
+    [ Left, Right, Up, Down ]
+        |> List.all
+            (\direction ->
+                Tuple.first (slideBoard direction board)
+                    == board
+            )
+
+
+won : Board -> Bool
+won board =
+    toListBoard board
+        |> List.any (List.any ((==) (Tile 2048)))
+
+
 
 -- VIEW
 
@@ -329,6 +355,20 @@ view model =
         [ h1 [] [ text "Hello" ]
         , div [] [ viewScore model.score ]
         , div [] [ viewBoard model.board ]
+        , div []
+            (if model.over then
+                [ text "Game over!" ]
+
+             else
+                []
+            )
+        , div []
+            (if model.won then
+                [ text "You win!" ]
+
+             else
+                []
+            )
         ]
 
 
