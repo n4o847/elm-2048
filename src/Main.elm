@@ -352,7 +352,7 @@ view model =
     div
         [ style "font-family" "Consolas"
         ]
-        [ h1 [] [ text "Hello" ]
+        [ h1 [] [ text "2048 in Elm" ]
         , div [] [ viewScore model.score ]
         , div [] [ viewBoard model.board ]
         , div []
