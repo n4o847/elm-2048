@@ -323,16 +323,25 @@ sample n list =
 
 view : Model -> Html Msg
 view model =
-    div []
+    div
+        [ style "font-family" "Consolas"
+        ]
         [ h1 [] [ text "Hello" ]
-        , div [] [ text <| "Score: " ++ String.fromInt model.score ]
-        , viewBoard model.board
+        , div [] [ viewScore model.score ]
+        , div [] [ viewBoard model.board ]
         ]
 
 
 viewBoard : Board -> Html Msg
 viewBoard board =
-    div [] <|
+    div
+        [ style "display" "inline-block"
+        , style "margin" "10px"
+        , style "padding" "5px"
+        , style "border-radius" "10px"
+        , style "background-color" "#bbb"
+        ]
+    <|
         Array.toList (Array.map viewRow board)
 
 
@@ -344,20 +353,49 @@ viewRow row =
 
 viewCell : Cell -> Html Msg
 viewCell cell =
+    let
+        cellStyle =
+            [ style "display" "inline-block"
+            , style "margin" "5px"
+            , style "width" "50px"
+            , style "height" "50px"
+            , style "line-height" "50px"
+            , style "border-radius" "5px"
+            , style "font-size" "24px"
+            , style "text-align" "center"
+            , style "vertical-align" "middle"
+            ]
+    in
     case cell of
         Tile number ->
-            span
-                [ style "padding" "1em"
-                ]
+            div
+                (cellStyle
+                    ++ [ style "background-color" "#eee"
+                       ]
+                )
                 [ text (String.fromInt number)
                 ]
 
         Empty ->
-            span
-                [ style "padding" "1em"
-                ]
-                [ text "_"
-                ]
+            div
+                (cellStyle
+                    ++ [ style "background-color" "#ccc"
+                       ]
+                )
+                []
+
+
+viewScore : Int -> Html Msg
+viewScore score =
+    div
+        [ style "display" "inline-block"
+        , style "margin" "10px"
+        , style "padding" "10px"
+        , style "border-radius" "10px"
+        , style "font-size" "20px"
+        , style "background-color" "#bbb"
+        ]
+        [ text <| "Score: " ++ String.fromInt score ]
 
 
 
