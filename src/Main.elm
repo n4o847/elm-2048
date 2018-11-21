@@ -1,6 +1,5 @@
 module Main exposing (main)
 
-import Array exposing (Array)
 import Browser
 import Browser.Events exposing (onKeyDown)
 import Html exposing (..)
@@ -33,11 +32,11 @@ type alias Model =
 
 
 type alias Board =
-    Array Row
+    List Row
 
 
 type alias Row =
-    Array Cell
+    List Cell
 
 
 type Cell
@@ -61,7 +60,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     let
         emptyBoard =
-            Array.repeat 4 <| Array.repeat 4 <| Empty
+            List.repeat 4 <| List.repeat 4 <| Empty
     in
     ( { board = emptyBoard
       , score = 0
@@ -130,11 +129,19 @@ update msg model =
 
 
 setBoard : Position -> Cell -> Board -> Board
-setBoard ( i, j ) cell board =
-    Array.get i board
-        |> Maybe.map (\oldRow -> Array.set j cell oldRow)
-        |> Maybe.map (\newRow -> Array.set i newRow board)
-        |> Maybe.withDefault board
+setBoard ( i, j ) cell =
+    let
+        updateAt idx f =
+            List.indexedMap
+                (\idx_ ->
+                    if idx_ == idx then
+                        f
+
+                    else
+                        identity
+                )
+    in
+    updateAt i <| updateAt j <| always cell
 
 
 mergeCell : Cell -> Cell -> ( Cell, Int )
@@ -198,16 +205,6 @@ slideRow row =
     )
 
 
-toListBoard : Board -> List (List Cell)
-toListBoard board =
-    Array.toList <| Array.map Array.toList board
-
-
-fromListBoard : List (List Cell) -> Board
-fromListBoard board =
-    Array.fromList <| List.map Array.fromList board
-
-
 transpose : List (List Cell) -> List (List Cell)
 transpose matrix =
     List.foldr (List.map2 (::)) (List.repeat (List.length matrix) []) matrix
@@ -215,19 +212,11 @@ transpose matrix =
 
 slideBoard : Direction -> Board -> ( Board, Int )
 slideBoard direction board =
-    board
-        |> toListBoard
-        |> slideListBoard direction
-        |> Tuple.mapFirst fromListBoard
-
-
-slideListBoard : Direction -> List (List Cell) -> ( List (List Cell), Int )
-slideListBoard direction board =
     case direction of
         Left ->
             board
                 |> List.map List.reverse
-                |> slideListBoard Right
+                |> slideBoard Right
                 |> Tuple.mapFirst (List.map List.reverse)
 
         Right ->
@@ -239,13 +228,13 @@ slideListBoard direction board =
         Up ->
             board
                 |> transpose
-                |> slideListBoard Left
+                |> slideBoard Left
                 |> Tuple.mapFirst transpose
 
         Down ->
             board
                 |> transpose
-                |> slideListBoard Right
+                |> slideBoard Right
                 |> Tuple.mapFirst transpose
 
         Other ->
@@ -255,8 +244,6 @@ slideListBoard direction board =
 emptyPositionList : Board -> List Position
 emptyPositionList board =
     board
-        |> Array.map Array.toList
-        |> Array.toList
         |> List.indexedMap (\i -> List.indexedMap (\j -> Tuple.pair ( i, j )))
         |> List.concat
         |> List.filterMap
@@ -339,8 +326,7 @@ stuck board =
 
 won : Board -> Bool
 won board =
-    toListBoard board
-        |> List.any (List.any ((==) (Tile 2048)))
+    List.any (List.member (Tile 2048)) board
 
 
 
@@ -382,13 +368,13 @@ viewBoard board =
         , style "background-color" "#bbb"
         ]
     <|
-        Array.toList (Array.map viewRow board)
+        List.map viewRow board
 
 
 viewRow : Row -> Html Msg
 viewRow row =
     div [] <|
-        Array.toList (Array.map viewCell row)
+        List.map viewCell row
 
 
 viewCell : Cell -> Html Msg
